@@ -1,6 +1,6 @@
 export default async function handler(req, res) {
 
-  // Allow CORS (this is what GitHub Pages needs)
+  // Allow requests from your website
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -10,16 +10,25 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  // Only POST allowed
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
 
-    const { message } = req.body;
+    // IMPORTANT: parse body manually
+    let body = "";
+    await new Promise((resolve) => {
+      req.on("data", chunk => {
+        body += chunk;
+      });
+      req.on("end", resolve);
+    });
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const { message } = JSON.parse(body);
+
+    // Call OpenAI
+    const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -30,7 +39,7 @@ export default async function handler(req, res) {
         messages: [
           {
             role: "system",
-            content: "You are a digital marketing tutor. Teach Meta Ads, audiences, pixel, CAPI, GA4, GTM, KPIs and optimization from beginner to advanced with simple examples."
+            content: "You are a digital marketing teacher. Explain Meta Ads, Pixel, GA4, GTM, audiences and optimization in very simple beginner friendly way with examples."
           },
           {
             role: "user",
@@ -40,13 +49,7 @@ export default async function handler(req, res) {
       })
     });
 
-    const data = await response.json();
+    const data = await openaiResponse.json();
 
     res.status(200).json({
-      reply: data.choices[0].message.content
-    });
-
-  } catch (error) {
-    res.status(500).json({ error: "Server error" });
-  }
-}
+      reply: data.choices?.[0]?.me
