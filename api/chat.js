@@ -1,29 +1,31 @@
 export default async function handler(req, res) {
 
-  // CORS (allows GitHub Pages to talk to Vercel)
+  // Allow your website to connect
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
-  // Browser preflight
+  // Handle browser preflight request
   if (req.method === "OPTIONS") {
     return res.status(200).end();
   }
 
-  // Only POST
+  // Only POST allowed
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+    return res.status(405).json({ error: "Use POST request" });
   }
 
   try {
 
+    // Vercel automatically parses JSON body
     const { message } = req.body;
 
     if (!message) {
-      return res.status(400).json({ error: "Message missing" });
+      return res.status(400).json({ error: "No message sent" });
     }
 
-    const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+    // Call OpenAI
+    const openai = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -35,7 +37,7 @@ export default async function handler(req, res) {
           {
             role: "system",
             content:
-              "You are a digital marketing tutor. Teach Meta Ads, Pixel, CAPI, GA4, GTM, audiences and optimization step-by-step from beginner to advanced with examples."
+              "You are a friendly teacher who explains Meta Ads, Facebook Ads, Pixel, CAPI, GA4, GTM, audiences, KPIs and optimization step-by-step with simple real-life examples."
           },
           {
             role: "user",
@@ -45,13 +47,17 @@ export default async function handler(req, res) {
       })
     });
 
-    const data = await openaiResponse.json();
+    const data = await openai.json();
 
-    res.status(200).json({
-      reply: data.choices?.[0]?.message?.content || "No response from AI"
+    const reply =
+      data?.choices?.[0]?.message?.content ||
+      "I couldn't generate a response.";
+
+    return res.status(200).json({ reply });
+
+  } catch (error) {
+    return res.status(500).json({
+      error: "Backend crashed. Check API key or OpenAI usage."
     });
-
-  } catch (err) {
-    res.status(500).json({ error: "Server error. Check API key." });
   }
 }
